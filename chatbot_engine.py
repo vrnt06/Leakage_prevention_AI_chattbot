@@ -1,7 +1,7 @@
 # chatbot_engine.py
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-# System instructions forcing the AI to maintain its SDG infrastructure alignment persona
 SDG_6_SYSTEM_PROMPT = (
     "You are an AI Utility Logistics Specialist dedicated to UN SDG 6: Clean Water and Sanitation. "
     "Your core task is to handle citizen reports regarding water pipe bursts, leaks, or pollution. "
@@ -12,13 +12,37 @@ SDG_6_SYSTEM_PROMPT = (
 )
 
 def initialize_water_bot(api_key):
-    """Initializes a fresh, structured conversational session with Gemini."""
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=SDG_6_SYSTEM_PROMPT
+    """Initializes the modern Google Gen AI Client."""
+    # Instantiates the current production SDK Client layer
+    return genai.Client(api_key=api_key)
+
+def send_ai_message(client, user_message, chat_history):
+    """Handles chat context using the standard system instructions template configuration."""
+    # Convert our local tracking history back into the explicit type objects expected by the SDK
+    formatted_contents = []
+    for msg in chat_history:
+        role = "user" if msg["role"] == "user" else "model"
+        formatted_contents.append(types.Content(
+            role=role,
+            parts=[types.Part.from_text(text=msg["content"])]
+        ))
+    
+    # Append the newest user input frame
+    formatted_contents.append(types.Content(
+        role="user",
+        parts=[types.Part.from_text(text=user_message)]
+    ))
+
+    # Send using the current generation production standard models
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=formatted_contents,
+        config=types.GenerateContentConfig(
+            system_instruction=SDG_6_SYSTEM_PROMPT,
+            temperature=0.7
+        )
     )
-    return model.start_chat(history=[])
+    return response.text
 
 def evaluate_leakage_metrics(ai_reply_text):
     """Parses structural severity strings to dynamically adjust water waste indexes."""
